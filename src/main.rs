@@ -24,11 +24,15 @@ use std::{env, thread};
 
 use image::io::Reader as ImageReader;
 
+/// Error wrapper for all errors, that could be thrown by the server
 #[derive(Display, From, Debug)]
-pub enum ImageProcessorError {
-    IOError(std::io::Error),
-    ImgError(ImageError),
-    ActixError(actix_web::Error),
+enum ImageProcessorError {
+    /// std::io::Error
+    IO(std::io::Error),
+    /// ImageError
+    IMG(ImageError),
+    /// actix_web::Error
+    Actix(actix_web::Error),
 }
 impl std::error::Error for ImageProcessorError {}
 
@@ -60,7 +64,10 @@ fn thread_worker() {
             let mut wq = match WORK_QUEUE.lock() {
                 Ok(v) => v,
                 Err(e) => {
-                    panic!("{:?}", e)
+                    #[allow(clippy::panic)]
+                        {
+                            panic!("{:?}", e)
+                        }
                 }
             };
             if wq.is_empty() {
@@ -104,7 +111,15 @@ fn thread_worker() {
                 Err(e) => {
                     log::error!("{:?}", e);
                     {
-                        let mut wq = WORK_QUEUE.lock().unwrap();
+                        let mut wq = match WORK_QUEUE.lock() {
+                            Ok(v) => v,
+                            Err(e) => {
+                                #[allow(clippy::panic)]
+                                    {
+                                        panic!("{:?}", e)
+                                    }
+                            }
+                        };
                         wq.insert(
                             _new_wq.0,
                             WorkObject {
@@ -119,8 +134,15 @@ fn thread_worker() {
             },
             Err(e) => {
                 log::error!("{:?}", e);
-                {
-                    let mut wq = WORK_QUEUE.lock().unwrap();
+                {let mut wq = match WORK_QUEUE.lock() {
+                    Ok(v) => v,
+                    Err(e) => {
+                        #[allow(clippy::panic)]
+                            {
+                                panic!("{:?}", e)
+                            }
+                    }
+                };
                     wq.insert(
                         _new_wq.0,
                         WorkObject {
@@ -135,8 +157,15 @@ fn thread_worker() {
         };
 
         let webp_img = webp::Encoder::from_image(&loaded_img).encode(75f32);
-        {
-            let mut wq = WORK_QUEUE.lock().unwrap();
+        {let mut wq = match WORK_QUEUE.lock() {
+            Ok(v) => v,
+            Err(e) => {
+                #[allow(clippy::panic)]
+                    {
+                        panic!("{:?}", e)
+                    }
+            }
+        };
             wq.insert(
                 _new_wq.0.clone(),
                 WorkObject {
@@ -156,7 +185,7 @@ fn start_threads() {
     }
 }
 
-pub async fn add_to_queue(
+async fn add_to_queue(
     web::Path((item_id,)): web::Path<(String,)>,
     mut body: web::Payload,
 ) -> Result<HttpResponse, Error> {
@@ -167,14 +196,17 @@ pub async fn add_to_queue(
 
     let mut bytes = web::BytesMut::new();
     while let Some(item) = body.next().await {
-        bytes.extend_from_slice(&item.unwrap());
+        bytes.extend_from_slice(&item?);
     }
 
     let snow = {
         let mut work_queue = match WORK_QUEUE.lock() {
             Ok(v) => v,
             Err(e) => {
-                panic!("{:?}", e)
+                #[allow(clippy::panic)]
+                    {
+                        panic!("{:?}", e)
+                    }
             }
         };
 
@@ -193,14 +225,17 @@ pub async fn add_to_queue(
     HttpResponse::build(StatusCode::OK).body(snow).await
 }
 
-pub async fn get_image_status(
+async fn get_image_status(
     web::Path((snowflake_id,)): web::Path<(String,)>,
 ) -> Result<HttpResponse, Error> {
     {
         let mut wq = match WORK_QUEUE.lock() {
             Ok(v) => v,
             Err(e) => {
-                panic!("{:?}", e)
+                #[allow(clippy::panic)]
+                    {
+                        panic!("{:?}", e)
+                    }
             }
         };
 
