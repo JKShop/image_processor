@@ -1,0 +1,6 @@
+#!/bin/sh
+
+# Check codestyle before pushing
+cargo fmt --all -- --check
+cargo clippy --all-targets --all -- -D warnings
+cargo check

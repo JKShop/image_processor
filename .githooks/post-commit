@@ -1,0 +1,4 @@
+#!/bin/sh
+
+cargo release patch
+cargo clippy --all-targets --all -- -D warnings
