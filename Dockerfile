@@ -1,6 +1,6 @@
 FROM debian as runtime
 RUN apt-get update
-RUN apt-get install -y libssl-dev
+RUN apt-get install -y libssl-dev imagemagick
 CMD mkdir /app
 WORKDIR /app
 COPY ./target/release/image_processor /app/image_processor
