@@ -1,7 +1,7 @@
-//#![forbid(unsafe_code)]
-//#![deny(clippy::needless_borrow, clippy::panic, clippy::unwrap_used)]
-//#![deny(unused_imports)]
-//#![forbid(missing_docs)]
+#![forbid(unsafe_code)]
+#![deny(clippy::needless_borrow, clippy::panic, clippy::unwrap_used)]
+#![deny(unused_imports)]
+#![forbid(missing_docs)]
 //! This crate provides an server, who converts incoming images to webp and stores them into an s3 bucket
 
 use actix_web::http::StatusCode;

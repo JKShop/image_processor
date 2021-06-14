@@ -1,0 +1,89 @@
+kind: pipeline
+type: docker
+name: Build Container
+platform:
+  arch: amd64
+
+steps:
+  - name: restore-target-cache
+    image: drillster/drone-volume-cache
+    volumes:
+      - name: target-cache
+        path: /target-cache
+    settings:
+      restore: true
+      mount:
+        - ./target
+
+  - name: update
+    image: rustlang/rust:nightly
+    commands:
+      - cargo update
+    depends_on:
+      - restore-target-cache
+
+  - name: check
+    image: rustlang/rust:nightly
+    commands:
+      - cargo check --release
+    depends_on:
+      - update
+
+  - name: clippy
+    image: rustlang/rust:nightly
+    commands:
+      - cargo clippy --release --all-targets --all -- -D warnings
+    depends_on:
+      - update
+
+  - name: build
+    image: rustlang/rust:nightly
+    commands:
+      - cargo build --release --verbose
+    depends_on:
+      - update
+
+  - name: rebuild-target-cache
+    image: drillster/drone-volume-cache
+    volumes:
+      - name: target-cache
+        path: /target-cache
+    settings:
+      rebuild: true
+      mount:
+        - ./target
+    depends_on:
+      - build
+      - check
+
+  - name: docker
+    image: plugins/docker
+    settings:
+      username:
+        from_secret: docker_username
+      password:
+        from_secret: docker_password
+      tags: [ "${DRONE_COMMIT_SHA:0:7}","latest" ]
+      repo: registry.soontm.net/jkshop/coordinator
+      registry: registry.soontm.net
+      insecure: true
+    depends_on:
+      - build
+      - check
+
+  - name: execute_update
+    image: python
+    commands:
+      - pip install --no-cache-dir requests
+      - python update.py
+    depends_on:
+      - docker
+      - rebuild-target-cache
+    environment:
+      password:
+        from_secret: password
+
+volumes:
+  - name: cache
+    host:
+      path: /tmp/cache
