@@ -30,7 +30,7 @@ enum ImageProcessorError {
     /// std::io::Error
     IO(std::io::Error),
     /// ImageError
-    IMG(ImageError),
+    Img(ImageError),
     /// actix_web::Error
     Actix(actix_web::Error),
 }
