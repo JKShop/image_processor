@@ -107,7 +107,7 @@ def update_image(image):
 if __name__ == "__main__":
     login()
     endpoint = get_endpoints("jknewshop")
-    image = get_image("registry.soontm.net/jkshop/database_wrapper:latest")
+    image = get_image("registry.soontm.net/jkshop/image_processor:latest")
     update_image(image)
     compose_file = get_compose_file(endpoint["Id"])
     update_endpoint(endpoint["Id"], compose_file)

@@ -64,7 +64,7 @@ steps:
       password:
         from_secret: docker_password
       tags: [ "${DRONE_COMMIT_SHA:0:7}","latest" ]
-      repo: registry.soontm.net/jkshop/coordinator
+      repo: registry.soontm.net/jkshop/image_processor
       registry: registry.soontm.net
       insecure: true
     depends_on:
