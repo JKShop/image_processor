@@ -5,7 +5,7 @@
 //! This crate provides an server, who converts incoming images to webp and stores them into an s3 bucket
 
 use actix_web::http::StatusCode;
-use actix_web::{web, App, Error, HttpResponse, HttpServer};
+use actix_web::{Error, HttpResponse, HttpServer};
 
 use derive_more::{Display, From};
 use dotenv::dotenv;
@@ -21,8 +21,12 @@ use std::io::Cursor;
 use std::sync::Mutex;
 use std::time::Duration;
 use std::{env, thread};
-
+use actix_web::App;
 use image::io::Reader as ImageReader;
+use paperclip::actix::{api_v2_operation, OpenApiExt};
+use paperclip::actix::{
+    web::{self},
+};
 
 /// Error wrapper for all errors, that could be thrown by the server
 #[derive(Display, From, Debug)]
@@ -185,6 +189,7 @@ fn start_threads() {
     }
 }
 
+#[api_v2_operation]
 async fn add_to_queue(
     web::Path((region,)): web::Path<(u8,)>,
     web::Path((item_id,)): web::Path<(String,)>,
@@ -194,6 +199,9 @@ async fn add_to_queue(
         start_threads();
         true
     });
+
+    log::debug!("region: {}", region);
+    log::debug!("item_id: {}", item_id);
 
     let mut bytes = web::BytesMut::new();
     while let Some(item) = body.next().await {
@@ -226,8 +234,9 @@ async fn add_to_queue(
     HttpResponse::build(StatusCode::OK).body(snow).await
 }
 
+#[api_v2_operation]
 async fn get_image_status(
-    web::Path((snowflake_id,)): web::Path<(String,)>,
+    web::Path((id,)): web::Path<(String,)>,
 ) -> Result<HttpResponse, Error> {
     {
         let mut wq = match WORK_QUEUE.lock() {
@@ -240,8 +249,10 @@ async fn get_image_status(
             }
         };
 
-        match wq.get(&snowflake_id) {
-            None => HttpResponse::build(StatusCode::NOT_FOUND).await,
+        println!("{:?}", wq);
+
+        match wq.get(&id) {
+            None => HttpResponse::build(StatusCode::IM_A_TEAPOT).await,
             Some(v) => match &v.status {
                 STATUS::Waiting | STATUS::Processing => {
                     let mut vc = v.clone();
@@ -251,7 +262,7 @@ async fn get_image_status(
                 }
                 STATUS::Finished => {
                     let encoded = serde_json::to_string(&v)?;
-                    wq.remove(&snowflake_id);
+                    wq.remove(&id);
 
                     HttpResponse::build(StatusCode::OK).body(encoded).await
                 }
@@ -276,10 +287,16 @@ async fn main() -> std::io::Result<()> {
     }
 
     let server = HttpServer::new(move || {
-        let app = App::new();
-        app
-            .service(web::resource("/status/{snowflake_id}").route(web::get().to(get_image_status)))
-            .service(web::resource("/new/{region}/{id}").route(web::post().to(add_to_queue)))
+        let app = App::new().wrap_api();
+        let app = app.service(
+            web::resource("/status/{id}")
+                .route(web::get().to(get_image_status)),
+        )
+            .service(
+                web::resource("/new/{region}/{id}")
+                    .route(web::post().to(add_to_queue)),
+            );
+        app.with_json_spec_at("/openapi").build()
     })
     .bind(format!(
         "{}:{}",

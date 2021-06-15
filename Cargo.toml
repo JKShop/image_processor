@@ -27,3 +27,8 @@ features = ["rustls"]
 [dependencies.serde]
 version = "1.0.126"
 features = ["derive"]
+
+
+[dependencies.paperclip]
+version = "0.5.0"
+features = ["actix-nightly"]
