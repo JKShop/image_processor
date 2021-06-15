@@ -277,8 +277,9 @@ async fn main() -> std::io::Result<()> {
 
     let server = HttpServer::new(move || {
         let app = App::new();
-        app.service(web::resource("/{region}/{id}").route(web::post().to(add_to_queue)))
+        app
             .service(web::resource("/status/{snowflake_id}").route(web::get().to(get_image_status)))
+            .service(web::resource("/{region}/{id}").route(web::post().to(add_to_queue)))
     })
     .bind(format!(
         "{}:{}",
