@@ -186,6 +186,7 @@ fn start_threads() {
 }
 
 async fn add_to_queue(
+    web::Path((region,)): web::Path<(u8,)>,
     web::Path((item_id,)): web::Path<(String,)>,
     mut body: web::Payload,
 ) -> Result<HttpResponse, Error> {
@@ -210,7 +211,7 @@ async fn add_to_queue(
             }
         };
 
-        let snow = Snowflake::new().await.to_string();
+        let snow = Snowflake::new(region).await.to_string();
         work_queue.insert(
             snow.clone(),
             WorkObject {
@@ -276,8 +277,8 @@ async fn main() -> std::io::Result<()> {
 
     let server = HttpServer::new(move || {
         let app = App::new();
-        app.service(web::resource("/{id}").route(web::post().to(add_to_queue)))
-            .service(web::resource("/status/{snowflake_id}").route(web::get().to(get_image_status)))
+        app.service(web::resource("/{region}/{id}").route(web::post().to(add_to_queue)))
+            .service(web::resource("/status//{snowflake_id}").route(web::get().to(get_image_status)))
     })
     .bind(format!(
         "{}:{}",
