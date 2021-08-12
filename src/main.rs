@@ -17,7 +17,7 @@ use once_cell::sync::{Lazy, OnceCell};
 use serde::Serialize;
 use snowflake::Snowflake;
 use std::collections::HashMap;
-use std::io::Cursor;
+use std::io::{Cursor, Write};
 use std::sync::Mutex;
 use std::time::Duration;
 use std::{env, thread};
@@ -27,6 +27,7 @@ use paperclip::actix::{api_v2_operation, OpenApiExt};
 use paperclip::actix::{
     web::{self},
 };
+use std::string::FromUtf8Error;
 
 /// Error wrapper for all errors, that could be thrown by the server
 #[derive(Display, From, Debug)]
@@ -37,6 +38,8 @@ enum ImageProcessorError {
     Img(ImageError),
     /// actix_web::Error
     Actix(actix_web::Error),
+    /// Utf-8 error
+    Utf8Error(FromUtf8Error)
 }
 impl std::error::Error for ImageProcessorError {}
 
@@ -107,6 +110,9 @@ fn thread_worker() {
         };
         log::debug!("Thread got work {:?}", thread::current().id());
 
+        let mut f = std::fs::File::create("imgdata.bin").unwrap();
+        f.write_all(_new_wq.1.image_data.as_bytes());
+
         let loaded_img = match ImageReader::new(Cursor::new(_new_wq.1.image_data.as_slice()))
             .with_guessed_format()
         {
@@ -120,7 +126,7 @@ fn thread_worker() {
                             Err(e) => {
                                 #[allow(clippy::panic)]
                                     {
-                                        panic!("{:?}", e)
+                                        panic!("Mutex error ! {:?}", e)
                                     }
                             }
                         };
@@ -143,7 +149,7 @@ fn thread_worker() {
                     Err(e) => {
                         #[allow(clippy::panic)]
                             {
-                                panic!("{:?}", e)
+                                panic!("Mutex error ! {:?}", e)
                             }
                     }
                 };
@@ -160,13 +166,21 @@ fn thread_worker() {
             }
         };
 
-        let webp_img = webp::Encoder::from_image(&loaded_img).encode(75f32);
+
+        let webp_img = if !infer::image::is_webp(_new_wq.1.image_data.as_bytes()){
+            log::debug!("Is not webp");
+            let webp = webp::Encoder::from_image(&loaded_img).encode(75f32);
+            webp.as_bytes().to_vec()
+        }else{
+            log::debug!("Is webp");
+            loaded_img.as_bytes().to_vec()
+        };
         {let mut wq = match WORK_QUEUE.lock() {
             Ok(v) => v,
             Err(e) => {
                 #[allow(clippy::panic)]
                     {
-                        panic!("{:?}", e)
+                        panic!("Mutex error ! {:?}", e)
                     }
             }
         };
@@ -174,7 +188,7 @@ fn thread_worker() {
                 _new_wq.0.clone(),
                 WorkObject {
                     item_id: _new_wq.1.item_id,
-                    image_data: webp_img.as_bytes().to_vec(),
+                    image_data: webp_img,
                     status: STATUS::Finished,
                 },
             );
@@ -208,6 +222,10 @@ async fn add_to_queue(
         bytes.extend_from_slice(&item?);
     }
 
+    let b64image = String::from_utf8(bytes.to_vec()).unwrap();
+
+    let image = base64::decode(b64image).unwrap();
+
     let snow = {
         let mut work_queue = match WORK_QUEUE.lock() {
             Ok(v) => v,
@@ -224,7 +242,7 @@ async fn add_to_queue(
             snow.clone(),
             WorkObject {
                 item_id,
-                image_data: bytes.as_bytes().to_vec(),
+                image_data: image,
                 status: STATUS::Waiting,
             },
         );
