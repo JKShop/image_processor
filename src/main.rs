@@ -170,10 +170,17 @@ fn thread_worker() {
         let webp_img = if !infer::image::is_webp(_new_wq.1.image_data.as_bytes()){
             log::debug!("Is not webp");
             let webp = webp::Encoder::from_image(&loaded_img).encode(75f32);
-            webp.as_bytes().to_vec()
+            let img =  webp.as_bytes().to_vec();
+            log::debug!("Webp encoded !");
+            let mut f = std::fs::File::create("webp.bin").unwrap();
+            f.write_all(&img);
+            img
         }else{
             log::debug!("Is webp");
-            loaded_img.as_bytes().to_vec()
+            let img =  _new_wq.1.image_data;
+            let mut f = std::fs::File::create("webpX.bin").unwrap();
+            f.write_all(&img);
+            img
         };
         {let mut wq = match WORK_QUEUE.lock() {
             Ok(v) => v,
@@ -193,7 +200,6 @@ fn thread_worker() {
                 },
             );
         }
-        log::debug!("Processed image {}", _new_wq.0);
     }
 }
 
@@ -266,8 +272,6 @@ async fn get_image_status(
                     }
             }
         };
-
-        println!("{:?}", wq);
 
         match wq.get(&id) {
             None => HttpResponse::build(StatusCode::IM_A_TEAPOT).await,
