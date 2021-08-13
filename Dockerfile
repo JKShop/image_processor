@@ -1,4 +1,4 @@
-FROM debian as runtime
+FROM ubuntu as runtime
 RUN echo "1.1.1.1" > /etc/resolv.conf
 RUN apt-get update
 RUN apt-get install -y libssl-dev imagemagick
