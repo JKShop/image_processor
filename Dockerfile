@@ -1,4 +1,4 @@
-FROM alpine as runtime
+FROM archlinux as runtime
 RUN pacman -S pkg-config openssl imagemagick
 CMD mkdir /app
 WORKDIR /app
