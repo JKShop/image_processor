@@ -1,5 +1,6 @@
 FROM ubuntu as runtime
 RUN echo "nameserver 1.1.1.1" > /etc/resolv.conf
+RUN nslookup google.com
 RUN apt-get update
 RUN apt-get install -y libssl-dev imagemagick
 CMD mkdir /app
