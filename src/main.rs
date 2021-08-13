@@ -267,7 +267,7 @@ async fn get_image_status(
         };
 
         match wq.get(&id) {
-            None => HttpResponse::build(StatusCode::IM_A_TEAPOT).await,
+            None => HttpResponse::build(StatusCode::NOT_FOUND).await,
             Some(v) => match &v.status {
                 STATUS::Waiting | STATUS::Processing => {
                     let mut vc = v.clone();
