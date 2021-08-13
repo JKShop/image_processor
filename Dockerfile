@@ -1,8 +1,5 @@
-FROM ubuntu as runtime
-RUN echo "nameserver 1.1.1.1" > /etc/resolv.conf
-RUN nslookup google.com
-RUN apt-get update
-RUN apt-get install -y libssl-dev imagemagick
+FROM alpine as runtime
+RUN pacman -S pkg-config openssl imagemagick
 CMD mkdir /app
 WORKDIR /app
 COPY ./target/release/image_processor /app/image_processor
