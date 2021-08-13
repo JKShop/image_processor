@@ -17,7 +17,7 @@ use once_cell::sync::{Lazy, OnceCell};
 use serde::Serialize;
 use snowflake::Snowflake;
 use std::collections::HashMap;
-use std::io::{Cursor, Write};
+use std::io::{Cursor};
 use std::sync::Mutex;
 use std::time::Duration;
 use std::{env, thread};
@@ -110,8 +110,6 @@ fn thread_worker() {
         };
         log::debug!("Thread got work {:?}", thread::current().id());
 
-        let mut f = std::fs::File::create("imgdata.bin").unwrap();
-        f.write_all(_new_wq.1.image_data.as_bytes());
 
         let loaded_img = match ImageReader::new(Cursor::new(_new_wq.1.image_data.as_slice()))
             .with_guessed_format()
@@ -172,15 +170,10 @@ fn thread_worker() {
             let webp = webp::Encoder::from_image(&loaded_img).encode(75f32);
             let img =  webp.as_bytes().to_vec();
             log::debug!("Webp encoded !");
-            let mut f = std::fs::File::create("webp.bin").unwrap();
-            f.write_all(&img);
             img
         }else{
             log::debug!("Is webp");
-            let img =  _new_wq.1.image_data;
-            let mut f = std::fs::File::create("webpX.bin").unwrap();
-            f.write_all(&img);
-            img
+             _new_wq.1.image_data
         };
         {let mut wq = match WORK_QUEUE.lock() {
             Ok(v) => v,
@@ -228,9 +221,9 @@ async fn add_to_queue(
         bytes.extend_from_slice(&item?);
     }
 
-    let b64image = String::from_utf8(bytes.to_vec()).unwrap();
+    let b64image = String::from_utf8(bytes.to_vec()).expect("failed to get string from bytes");
 
-    let image = base64::decode(b64image).unwrap();
+    let image = base64::decode(b64image).expect("failed to b64 decode");
 
     let snow = {
         let mut work_queue = match WORK_QUEUE.lock() {
