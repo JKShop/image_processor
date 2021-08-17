@@ -71,18 +71,6 @@ steps:
       - build
       - check
 
-  - name: execute_update
-    image: python
-    commands:
-      - pip install --no-cache-dir requests
-      - python update.py
-    depends_on:
-      - docker
-      - rebuild-target-cache
-    environment:
-      password:
-        from_secret: password
-
 volumes:
   - name: cache
     host:
