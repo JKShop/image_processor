@@ -1,18 +1,16 @@
-import os
 import base64
 import json
 
 import requests
 
-URL = "http://185.228.136.146:9000/api"
+URL = "https://portainer.soontm.net/api"
 JWT_TOKEN = ""
-
 
 
 def login():
     global JWT_TOKEN
     login_payload = {'username': 'admin',
-                     'password': os.environ['password']}
+                     'password': 'UzZTb2lTVXhFeTRXZVhjSl5wWFFMTm9wMmZvKnQjenZlVipBdnFrdiRUTXZoRldCSEBvUXNaMkNW'}
     response = requests.post(URL + "/auth", json=login_payload)
     if response.status_code != 200:
         print("Login request failed !")
@@ -107,7 +105,8 @@ def update_image(image):
 if __name__ == "__main__":
     login()
     endpoint = get_endpoints("jknewshop")
-    image = get_image("registry.soontm.net/jkshop/image_processor:latest")
+    image = get_image("registry.soontm.net/jkshop/database_wrapper:latest")
     update_image(image)
     compose_file = get_compose_file(endpoint["Id"])
     update_endpoint(endpoint["Id"], compose_file)
+
